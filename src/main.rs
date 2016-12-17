@@ -5,16 +5,10 @@ fn main() {
     match slurp("test.lisp") {
         Some(txt) => {
             let mut ts = Vec::new();
-            for c in txt.chars() {
-                let t = parse(c);
-                match t {
-                    Token::Newline | Token::Space => { continue; },
-                    _ => { ts.push(t); },
-                }
-            }
+            ts = txt.chars().map(|c| parse(c)).collect();
             println!("{:?}", ts);
         }
-        _ => { println!("Couldn't read file."); }
+        _ => {}
     }
 }
 
