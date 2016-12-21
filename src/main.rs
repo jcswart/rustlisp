@@ -35,6 +35,7 @@ fn main() {
     println!("{:?}", results);
 }
 
+/// Characters that denote whitespace or s-exprs.
 fn is_terminal(c: char) -> bool {
     match c {
         '(' | ')' | ' ' | '\n' => { true },
@@ -60,4 +61,14 @@ fn slurp(file: &str) -> Option<String> {
 #[test]
 fn test_slurp() {
     assert_eq!(slurp("test.lisp"), Some(String::from("(+ 1 2)\n")));
+}
+
+#[test]
+fn test_is_terminal() {
+    assert!(is_terminal('('));
+    assert!(is_terminal(')'));
+    assert!(is_terminal(' '));
+    assert!(is_terminal('\n'));
+    assert_eq!(false, is_terminal('a'));
+    assert_eq!(false, is_terminal('.'));
 }
