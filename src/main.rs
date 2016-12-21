@@ -1,46 +1,51 @@
 use std::fs::File;
 use std::io::Read;
-use ParseToken as PT;
+use Token::*;
 
 fn main() {
-    match slurp("test2.lisp") {
-        Some(txt) => {
-            let ts: Vec<ParseToken> = txt.chars().map(|c| parse(c)).collect();
-            println!("{:?}", ts);
+    let file = slurp("test2.lisp");
+    if  file.is_none() {
+        panic!("Fuck");
+    }
+
+    let text        = file.unwrap();
+    let mut chars   = text.chars().peekable();
+    let mut results = Vec::<Token>::new();
+    let mut buffer  = Vec::new();
+
+    loop {
+        let curr = chars.next();
+        let next = chars.peek();
+        if curr.is_none() {
+            break;
         }
-        _ => {println!("{}", "No file found.")}
+        let c = curr.unwrap();
+        if is_terminal(c) {
+            results.push(Char(c));
+        } else {
+            buffer.push(Char(c));
+            if is_terminal(*next.unwrap_or(&' ')) {
+                let tmp = buffer.clone();
+                let xstr: String = tmp.iter().map(|x| match *x { Char(c) => {c}, _ => { ' ' }}).collect();
+                results.push(Str(xstr));
+                buffer.clear();
+            }
+        }
     }
+    println!("{:?}", results);
 }
 
-/// Convert the characters in a file into ParseTokens.
-///
-/// The tokens add the first level of structure to the file and will be passed
-/// along to a statemachine to build up the AST.
-fn parse (c: char) -> ParseToken {
+fn is_terminal(c: char) -> bool {
     match c {
-       '(' => PT::BeginExpr,
-       ')' => PT::EndExpr,
-       ' ' => PT::Space,
-       '\n'=> PT::Newline,
-       '\t'=> PT::Tab,
-       _   => PT::Unfinished(c)
+        '(' | ')' | ' ' | '\n' => { true },
+        _ => { false }
     }
 }
 
-#[derive(Debug)]
-enum ParseToken {
-    BeginExpr,
-    EndExpr,
-    Space,
-    Newline,
-    Tab,
-    Unfinished(char),
-}
-
-fn stringify (xs: Vec<ParseToken>) -> String {
-    xs.iter().map(|x| match x { &PT::Unfinished(c) => Some(c), _ => None})
-             .map(|x| x.unwrap())
-             .collect()
+#[derive(Clone,Debug)]
+enum Token {
+    Char(char),
+    Str(String)
 }
 
 /// Slurp a file like clojure.
@@ -55,12 +60,4 @@ fn slurp(file: &str) -> Option<String> {
 #[test]
 fn test_slurp() {
     assert_eq!(slurp("test.lisp"), Some(String::from("(+ 1 2)\n")));
-}
-
-#[test]
-fn test_stringify() {
-    assert_eq!(stringify(vec![PT::Unfinished('f'),
-                              PT::Unfinished('o'),
-                              PT::Unfinished('o')]),
-               String::from("foo"));
 }
