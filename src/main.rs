@@ -6,12 +6,19 @@ use Token::*;
 use LispVal::*;
 
 fn main() {
-    let file = slurp("test2.lisp");
-    if  file.is_none() {
+    let source = slurp("test2.lisp");
+    if  source.is_none() {
         panic!("File not found!");
     }
+    let results = tokenize(source.unwrap());
 
-    let text        = file.unwrap();
+    let values: Vec<LispVal> = results.into_iter().map(valueize).collect();
+    println!("{:?}", values);
+
+}
+
+fn tokenize (s: String) -> Vec<Token> {
+    let text        = s;
     let mut chars   = text.chars().peekable();
     let mut results = Vec::<Token>::new();
     let mut buffer  = Vec::new();
@@ -35,13 +42,10 @@ fn main() {
             }
         }
     }
-    println!("{:?}", results);
-    let r2: Vec<LispVal> = results.into_iter().map(parse2).collect();
-    println!("{:?}", r2);
-
+    results
 }
 
-fn parse2 (t: Token) -> LispVal {
+fn valueize (t: Token) -> LispVal {
     match t {
         Char(c) => {
             match c {
