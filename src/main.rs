@@ -14,7 +14,6 @@ fn main() {
 
     let values: Vec<LispVal> = results.into_iter().map(valueize).collect();
     println!("{:?}", values);
-
 }
 
 fn tokenize (s: String) -> Vec<Token> {
