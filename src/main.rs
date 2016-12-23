@@ -1,11 +1,14 @@
 use std::fs::File;
 use std::io::Read;
+use std::collections::HashMap as HM;
+use std::ops::Add;
 use Token::*;
+use LispVal::*;
 
 fn main() {
     let file = slurp("test2.lisp");
     if  file.is_none() {
-        panic!("Fuck");
+        panic!("File not found!");
     }
 
     let text        = file.unwrap();
@@ -33,13 +36,47 @@ fn main() {
         }
     }
     println!("{:?}", results);
+    let r2: Vec<LispVal> = results.into_iter().map(parse2).collect();
+    println!("{:?}", r2);
+
+}
+
+fn parse2 (t: Token) -> LispVal {
+    match t {
+        Char(c) => {
+            match c {
+                '(' => {BeginExpr},
+                ')' => {EndExpr},
+                ' ' | '\n' => {Whitespace},
+                _   => {Wildcard},
+            }
+        },
+        Str(s)  => {
+            let a = i32::from_str_radix(&s, 10).ok();
+            match a {
+                Some(i) => {Integer(i as i64)},
+                None    => {Function(s)}
+            }
+
+        },
+    }
+}
+
+#[derive(Clone,Debug)]
+enum LispVal {
+    Function(String),
+    Integer(i64),
+    BeginExpr,
+    EndExpr,
+    Wildcard,
+    Whitespace
 }
 
 /// Characters that denote whitespace or s-exprs.
 fn is_terminal(c: char) -> bool {
     match c {
         '(' | ')' | ' ' | '\n' => { true },
-        _ => { false }
+        _                      => { false }
     }
 }
 
@@ -72,3 +109,12 @@ fn test_is_terminal() {
     assert_eq!(false, is_terminal('a'));
     assert_eq!(false, is_terminal('.'));
 }
+
+#[test]
+fn test_func_map_idea() {
+    let mut functions = HM::<&str, fn(i64,i64) -> i64>::new();
+    functions.insert("+", i64::add);
+    let add = functions.get("+").unwrap();
+    assert_eq!(3, add(1,2));
+}
+
