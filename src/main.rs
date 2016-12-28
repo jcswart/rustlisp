@@ -6,14 +6,42 @@ use Token::*;
 use LispVal::*;
 
 fn main() {
-    let source = slurp("test2.lisp");
+    let source = slurp("test.lisp");
     if  source.is_none() {
         panic!("File not found!");
     }
-    let results = tokenize(source.unwrap());
 
+    let results              = tokenize(source.unwrap());
     let values: Vec<LispVal> = results.into_iter().map(valueize).collect();
-    println!("{:?}", values);
+    let stacks               = generate_stacks(values);
+
+    println!("{:?}", stacks);
+}
+
+fn generate_stacks(values: Vec<LispVal>) -> (Vec<LispVal>, Vec<Vec<LispVal>>) {
+    let mut capture_func = false;
+    let mut call = vec![];
+    let mut args = vec![];
+    let mut tmp = vec![];
+    for v in values {
+        match v {
+            BeginExpr => { capture_func = true; },
+            Atom(a)   => {
+                if capture_func {
+                    call.push(Atom(a));
+                    capture_func = false;
+                } else {
+                    tmp.push(Atom(a));
+                }
+            },
+            EndExpr => {
+                args.push(tmp.clone());
+                tmp.clear();
+            }
+            _ => {},
+        }
+    }
+    (call, args)
 }
 
 fn tokenize (s: String) -> Vec<Token> {
@@ -44,31 +72,27 @@ fn tokenize (s: String) -> Vec<Token> {
     results
 }
 
+fn valueize_all (ts: Vec<Token>) -> Vec<LispVal> {
+    ts.into_iter().map(valueize).collect()
+}
+
 fn valueize (t: Token) -> LispVal {
     match t {
         Char(c) => {
             match c {
-                '(' => {BeginExpr},
-                ')' => {EndExpr},
+                '('        => {BeginExpr},
+                ')'        => {EndExpr},
                 ' ' | '\n' => {Whitespace},
-                _   => {Wildcard},
+                _          => {Wildcard},
             }
         },
-        Str(s)  => {
-            let a = i32::from_str_radix(&s, 10).ok();
-            match a {
-                Some(i) => {Integer(i as i64)},
-                None    => {Function(s)}
-            }
-
-        },
+        Str(s)  => { Atom(s) },
     }
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone,Debug,PartialEq)]
 enum LispVal {
-    Function(String),
-    Integer(i64),
+    Atom(String),
     BeginExpr,
     EndExpr,
     Wildcard,
@@ -83,7 +107,7 @@ fn is_terminal(c: char) -> bool {
     }
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone,Debug,PartialEq)]
 enum Token {
     Char(char),
     Str(String)
@@ -98,9 +122,18 @@ fn slurp(file: &str) -> Option<String> {
         .and(Some(s))
 }
 
+///
+/// Tests
+///
+
+/// Test helper.
+fn str(s: &str) -> String {
+    String::from(s)
+}
+
 #[test]
 fn test_slurp() {
-    assert_eq!(slurp("test.lisp"), Some(String::from("(+ 1 2)\n")));
+    assert_eq!(slurp("test.lisp"), Some(str("(+ 1 2)\n")));
 }
 
 #[test]
@@ -111,6 +144,30 @@ fn test_is_terminal() {
     assert!(is_terminal('\n'));
     assert_eq!(false, is_terminal('a'));
     assert_eq!(false, is_terminal('.'));
+}
+
+#[test]
+fn test_tokenize() {
+    assert_eq!(tokenize(str("(+ 1 2)")),
+               vec![Char('('),
+                    Str(str("+")),
+                    Char(' '),
+                    Str(str("1")),
+                    Char(' '),
+                    Str(str("2")),
+                    Char(')')])
+}
+
+#[test]
+fn test_valueize_all() {
+    assert_eq!(valueize_all(tokenize(str("(+ 1 2)"))),
+               vec![BeginExpr,
+                    Atom(str("+")),
+                    Whitespace,
+                    Atom(str("1")),
+                    Whitespace,
+                    Atom(str("2")),
+                    EndExpr])
 }
 
 #[test]
